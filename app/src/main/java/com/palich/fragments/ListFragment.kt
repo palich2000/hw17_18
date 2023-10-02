@@ -1,24 +1,19 @@
 package com.palich.fragments
 
-import android.app.Application
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.ViewTreeObserver
-import android.widget.AdapterView
-import android.widget.ArrayAdapter
-import android.widget.ListView
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-
+import kotlinx.coroutines.*
 class ListFragment : Fragment() {
     companion object {
         private const val TAG = "ListFragment"
     }
-
+    private val myScope = CoroutineScope(Dispatchers.Main)
     private var onItemClick: (Int, Boolean) -> Unit = { _, _ ->}
     private var post: () -> Unit = {}
     override fun onCreateView(
@@ -27,6 +22,21 @@ class ListFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         return inflater.inflate(R.layout.list_fragment, container, false)
+    }
+
+
+    private suspend fun getSuperHeroList(): MutableList<SuperHero>? {
+        val sgList:MutableList<SuperHero>? = MyApplication.getSuperHeroList()
+        if (sgList != null) {
+            val listView: RecyclerView? = view?.findViewById(R.id.list_recycler_view)
+            if (listView != null) {
+                val adapter = listView.adapter as MyRecyclerViewAdapter
+                adapter.updateList(sgList)
+                listView.scrollToPosition(MyApplication.loadCurrentPosition())
+                onItemClick(MyApplication.loadCurrentPosition(), true)
+            }
+        }
+        return sgList
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -40,13 +50,7 @@ class ListFragment : Fragment() {
 
         listView.adapter = adapter
         listView.layoutManager = LinearLayoutManager(requireContext())
-        MyApplication.getSuperHeroList {
-            if (it != null) {
-                adapter.updateList(it)
-                listView.scrollToPosition(MyApplication.loadCurrentPosition())
-                onItemClick(MyApplication.loadCurrentPosition(), true)
-            }
-        }
+
 
         listView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
@@ -60,13 +64,10 @@ class ListFragment : Fragment() {
             }
         })
 
-//        listView.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
-//            override fun onPreDraw(): Boolean {
-//                listView.viewTreeObserver.removeOnPreDrawListener(this)
-//
-//                return true
-//            }
-//        })
+        myScope.launch {
+            getSuperHeroList()
+        }
+
     }
 
     fun setPost(post: () -> Unit) {
@@ -75,5 +76,10 @@ class ListFragment : Fragment() {
 
     fun setOnItemClickListener(listener: (Int, Boolean) -> Unit) {
         onItemClick = listener
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        myScope.cancel()
     }
 }

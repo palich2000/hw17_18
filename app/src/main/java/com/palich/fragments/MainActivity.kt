@@ -3,57 +3,35 @@ package com.palich.fragments
 import android.os.Bundle
 import android.util.Log
 import androidx.fragment.app.FragmentActivity
-import androidx.fragment.app.FragmentContainerView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import android.app.Application
 import android.content.SharedPreferences
-import android.os.PersistableBundle
-import android.widget.Toast
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import io.reactivex.android.schedulers.AndroidSchedulers
-import io.reactivex.schedulers.Schedulers
 
 class MyApplication : Application() {
     companion object {
         private const val TAG = "MyApplication"
+
         var instance: MyApplication? = null
+
         val api = SuperHeroApiClient().client.create(SuperHeroApiInterface::class.java)
         private var superGeroList: MutableList<SuperHero>? = null
 
-        fun setSuperHeroList(list: MutableList<SuperHero>?) {
-            superGeroList = list
-        }
-
-        var cbSuperHeroes: (MutableList<SuperHero>?) -> Unit = {}
-
-        fun getSuperHeroList(cb: (MutableList<SuperHero>?) -> Unit): MutableList<SuperHero>? {
-            cbSuperHeroes = cb
-            if (superGeroList != null) {
-                cb(superGeroList)
-                return superGeroList
-            }
-            return null
-        }
-
-        fun fetchSuperHeroList(): MutableList<SuperHero>? {
+        suspend fun getSuperHeroList(): MutableList<SuperHero>? {
+            Log.i(TAG, "getSuperHeroList")
             if (superGeroList != null) {
                 return superGeroList
             }
-            val s = api.getSuperHero()
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe({
-                    if (it.isNotEmpty()) {
-                        setSuperHeroList(it)
-                        cbSuperHeroes(it)
-                        Log.i(TAG, "Super heroes list length ${it.count()}")
-                    } else {
-                        Log.e(TAG, "No super heroes")
-                    }
-                }, {
-                    Log.e(TAG, "Error $it")
-                })
+            return fetchSuperHeroList()
+        }
+
+        private suspend fun fetchSuperHeroList(): MutableList<SuperHero>? {
+            Log.i(TAG, "fetchSuperHeroList")
+            if (superGeroList == null) {
+                Log.i(TAG, "Super heroes list before")
+                superGeroList = api.getSuperHero()
+                Log.i(TAG, "Super heroes list after length ${superGeroList?.count()}")
+            }
+            Log.i(TAG, "Super heroes list $superGeroList")
             return superGeroList
         }
 
@@ -77,11 +55,11 @@ class MyApplication : Application() {
             return sharedPrefs.getString(key, null)
         }
     }
+
     override fun onCreate() {
         super.onCreate()
         Log.i("Application", "onCreate")
         instance = this
-        fetchSuperHeroList()
         sharedPrefs = getSharedPreferences("my_prefs", MODE_PRIVATE)
     }
 
@@ -161,8 +139,4 @@ class MainActivity : FragmentActivity() {
         }
         Log.i("MainActivity", "onDestroy ${supportFragmentManager.fragments}")
     }
-
-//    override fun onSaveInstanceState(outState: Bundle) {
-//        super.onSaveInstanceState(outState, outPersistentState)
-//    }
 }

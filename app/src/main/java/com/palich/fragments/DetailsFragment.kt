@@ -9,6 +9,9 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import com.bumptech.glide.Glide
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class DetailsFragment() : Fragment() {
     companion object {
@@ -20,6 +23,7 @@ class DetailsFragment() : Fragment() {
     private var text2: TextView? = null
 
     private var superHero: SuperHero? = null
+    private val myScope = CoroutineScope(Dispatchers.Main)
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -36,10 +40,11 @@ class DetailsFragment() : Fragment() {
     }
 
     fun show(ii: Int) {
-        MyApplication.getSuperHeroList {
-            Log.i(TAG, "Super heroes list length ${it?.count()}")
-            superHero = if (it != null) {
-                it[ii]
+        myScope.launch {
+            val sgList = MyApplication.getSuperHeroList()
+            Log.i(TAG, "Super heroes list length ${sgList?.count()}")
+            superHero = if (sgList != null) {
+                sgList[ii]
             } else {
                 null
             }
@@ -50,6 +55,6 @@ class DetailsFragment() : Fragment() {
                 Glide.with(requireContext()).load(url).into(image!!)
             }
         }
-
     }
+
 }
